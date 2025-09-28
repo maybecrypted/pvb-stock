@@ -403,7 +403,7 @@
                 }
 
                 // Add timestamp to prevent caching
-                const url = `https://plantsvsbrainrot.com/api/seed-shop.php?ts=${Date.now()}`;
+                const url = `/api/seed-shop?ts=${Date.now()}`;
                 
                 const response = await fetch(url, {
                     method: 'GET',
