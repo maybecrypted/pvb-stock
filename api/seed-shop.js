@@ -1,5 +1,3 @@
-import fetch from "node-fetch";
-
 export default async function handler(req, res) {
     try {
         const response = await fetch("https://plantsvsbrainrot.com/api/seed-shop.php");
