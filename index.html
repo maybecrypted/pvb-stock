@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Plants vs Brainrot Stock Tracker</title>
-    <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <title>Plants vs Brainrot Stock</title>
+    <link href="https://fonts.googleapis.com/css2?family=Comfortaa&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -43,7 +43,7 @@
         .controls {
             display: flex;
             justify-content: center;
-            align-items: center;
+            align-items: center; /* Added to vertically align refresh button with text */
             gap: 1rem;
             margin-bottom: 2rem;
             font-size: 0.875rem;
@@ -63,12 +63,6 @@
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
             overflow: hidden;
-            font-family: inherit;
-        }
-
-        .refresh-btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
         }
 
         .refresh-btn::before {
@@ -80,15 +74,14 @@
             height: 0;
             background: rgba(255,255,255,0.1);
             transform: translate(-50%, -50%);
-            transition: all 0.3s ease;
         }
 
-        .refresh-btn:hover:not(:disabled)::before {
+        .refresh-btn:hover::before {
             width: 100%;
             height: 100%;
         }
 
-        .refresh-btn:active:not(:disabled) {
+        .refresh-btn:active {
             transform: translateY(-1px) scale(1.02);
             transition: all 0.1s ease;
         }
@@ -167,13 +160,19 @@
             border: 1px solid #1f1f1f;
             border-radius: 0.5rem;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            /* Removed animation properties for items */
+            /* opacity: 0; */
+            /* transform: translateX(-20px); */
+            /* animation: slideInLeft 0.4s ease-out forwards; */
         }
 
-        .item:hover {
-            background: #1a1a1a;
-            border-color: #2d2d2d;
-            transform: translateY(-1px);
-        }
+        /* Removed individual animation delays for items */
+        /* .item:nth-child(1) { animation-delay: 0.1s; }
+        .item:nth-child(2) { animation-delay: 0.15s; }
+        .item:nth-child(3) { animation-delay: 0.2s; }
+        .item:nth-child(4) { animation-delay: 0.25s; }
+        .item:nth-child(5) { animation-delay: 0.3s; }
+        .item:nth-child(n+6) { animation-delay: 0.35s; } */
 
         .item-icon {
             width: 2rem;
@@ -188,13 +187,12 @@
             font-size: 1.5rem;
             transition: transform 0.3s ease;
         }
+	.item-icon img {
+    	    width: 100%;
+    	    height: 100%;
+    	    object-fit: contain;
+	}
 
-        .item-icon img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            border-radius: 0.375rem;
-        }
 
         .item:hover .item-icon {
             transform: scale(1.1);
@@ -234,7 +232,6 @@
             border: 1px solid #2d2d2d;
             border-radius: 0.75rem;
             color: #ef4444;
-            margin: 2rem;
         }
 
         .empty {
@@ -318,8 +315,8 @@
             <h1 class="header-title">Live Stock – Plants vs Brainrot</h1>
             
             <div class="controls">
-                <span id="countdown">Loading...</span>
-                <button class="refresh-btn" id="refresh-btn" onclick="handleRefresh()">Refresh</button>
+                <span id="last-updated">Loading...</span>
+                <button class="refresh-btn" onclick="loadStock(true)">Refresh</button>
             </div>
         </div>
 
@@ -336,112 +333,68 @@
         </div>
     </div>
 
-    <script>
-        let seedData = null;
-        let loading = false;
-        let error = null;
-        let countdown = '';
-        let isShopUpdate = false;
+  <script>
+    let seedData = null;
+    let isShopUpdate = false;
 
-        const emojiToImage = {
-            "🌵": "/images/cactus.png",
-            "🍓": "/images/strawberry.png",
-            "🎃": "/images/pumpkin.png",
-            "🌻": "/images/sunflower.png",
-            "🐉": "/images/dragon_fruit.png",
-            "🍆": "/images/eggplant.png",
-            "🍉": "/images/watermelon.png",
-            "🥥": "/images/cocotank.png",
-            "🪴": "/images/carnivorous_plant.png",
-            "🥕": "/images/mr_carrot.png",
-            "🍅": "/images/tomatrio.png",
-            "🍄": "/images/shroombino.png"
-        };
+const emojiToImage = {
+"🌵": "/images/cactus.png", "🍓": "/images/strawberry.png", "🎃": "/images/pumpkin.png", "🌻": "/images/sunflower.png", "🐉": "/images/dragon_fruit.png", "🍆": "/images/eggplant.png", "🍉": "/images/watermelon.png", "🥥": "/images/cocotank.png", "🪴": "/images/carnivorous_plant.png", "🥕": "/images/mr_carrot.png", "🍅": "/images/tomatrio.png", "🍄": "/images/shroombino.png",
+};
+const defaultImage = "/images/default.png";
 
-        const defaultImage = "/images/default.png";
 
-        function getNextShopUpdate() {
-            const now = new Date();
-            const minutes = now.getUTCMinutes();
-            const nextMinutes = 5 * Math.ceil(minutes / 5);
-            const next = new Date(Date.UTC(
-                now.getUTCFullYear(),
-                now.getUTCMonth(),
-                now.getUTCDate(),
-                now.getUTCHours(),
-                nextMinutes,
-                0,
-                0
-            ));
-            if (next <= now) {
-                next.setUTCMinutes(next.getUTCMinutes() + 5);
-            }
-            return next.getTime();
+
+    function getNextShopUpdate() {
+        const now = new Date();
+        const minutes = now.getUTCMinutes();
+        const nextMinutes = 5 * Math.ceil(minutes / 5);
+        const next = new Date(Date.UTC(
+            now.getUTCFullYear(),
+            now.getUTCMonth(),
+            now.getUTCDate(),
+            now.getUTCHours(),
+            nextMinutes,
+            0,
+            0
+        ));
+        if (next <= now) {
+            next.setUTCMinutes(next.getUTCMinutes() + 5);
         }
+        return next.getTime();
+    }
 
-        function updateCountdown() {
-            if (!seedData) return;
+    function updateCountdown() {
+        if (!seedData) return;
 
-            const diff = getNextShopUpdate() - Date.now();
-            const minutes = Math.floor(diff / 60000);
-            const seconds = Math.floor((diff % 60000) / 1000);
-            
-            const lastUpdated = new Date(seedData.reportedAt).toLocaleTimeString();
-            countdown = `Last updated: ${lastUpdated} | Next update in: ${minutes}m ${seconds}s`;
-            document.getElementById('countdown').textContent = countdown;
-            
-            if (minutes === 0 && seconds <= 5 && seconds > 0) {
-                isShopUpdate = true;
-            }
+        const diff = getNextShopUpdate() - Date.now();
+        const countdownEl = document.getElementById('last-updated');
+
+        const minutes = Math.floor(diff / 60000);
+        const seconds = Math.floor((diff % 60000) / 1000);
+        countdownEl.textContent = `Last updated: ${new Date(seedData.reportedAt).toLocaleTimeString()} | Next update in: ${minutes}m ${seconds}s`;
+        
+        if (minutes === 0 && seconds <= 5 && seconds > 0) {
+            isShopUpdate = true;
         }
+    }
 
-        async function loadStock(manualRefresh = false) {
-            try {
-                error = null;
-                if (!manualRefresh) {
-                    loading = true;
-                }
-
-                // Add timestamp to prevent caching
-                const url = `/api/seed-shop?ts=${Date.now()}`;
-                
-                const response = await fetch(url, {
-                    method: 'GET',
-                    headers: {
-                        'Accept': 'application/json',
-                    },
-                });
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                
-                const data = await response.json();
-                seedData = data;
-                loading = false;
-                
-                if (isShopUpdate && !manualRefresh) {
-                    // Trigger shop update animation
-                    const refreshBtn = document.getElementById('refresh-btn');
-                    refreshBtn.classList.add('shop-update');
-                    setTimeout(() => {
-                        refreshBtn.classList.remove('shop-update');
-                        isShopUpdate = false;
-                    }, 1500);
-                }
-
-                renderSeedItems();
-                
-            } catch (err) {
-                console.error('Failed to fetch seed shop data:', err);
-                error = 'Failed to load stock. Please try again.';
-                loading = false;
-                renderError();
+    async function loadStock(manualRefresh = false) {
+        try {
+            const refreshBtn = document.querySelector('.refresh-btn');
+            if (isShopUpdate && !manualRefresh) {
+                refreshBtn.classList.add('shop-update');
+                setTimeout(() => {
+                    refreshBtn.classList.remove('shop-update');
+                    isShopUpdate = false;
+                }, 1500);
             }
-        }
 
-        function renderSeedItems() {
-            const seedItems = seedData?.seeds || [];
+            const seedRes = await fetch("/api/seed-shop");
+            const seedJson = await seedRes.json();
+
+            seedData = seedJson;
+            const seedItems = seedJson?.seeds || [];
+
             const seedItemsEl = document.getElementById('seed-items');
             const seedCountEl = document.getElementById('seed-count');
 
@@ -449,67 +402,42 @@
                 seedItemsEl.innerHTML = '<div class="empty">No seeds in stock</div>';
                 seedCountEl.textContent = '0 items';
             } else {
-                seedItemsEl.innerHTML = seedItems.map((seed, index) => {
-                    const imgSrc = emojiToImage[seed.emoji] || defaultImage;
+                seedItemsEl.innerHTML = seedItems.map((s, i) => {
+                    // Use mapped image or default
+                    const imgSrc = emojiToImage[s.emoji] || defaultImage;
                     return `
                         <div class="item">
                             <div class="item-icon">
-                                <img 
-                                    src="${imgSrc}" 
-                                    alt="${seed.name}" 
-                                    width="32" 
-                                    height="32"
-                                    onerror="this.style.display='none'; this.parentElement.innerHTML='${seed.emoji}';"
-                                />
+                                <img src="${imgSrc}" alt="${s.name}" width="32" height="32">
                             </div>
                             <div class="item-details">
-                                <div class="item-name">${seed.name}</div>
-                                <div class="item-quantity">Quantity: ${seed.qty}</div>
+                                <div class="item-name">${s.name}</div>
+                                <div class="item-quantity">Quantity: ${s.qty}</div>
                             </div>
                         </div>
                     `;
                 }).join('');
                 seedCountEl.textContent = `${seedItems.length} items`;
             }
-        }
 
-        function renderError() {
-            const seedItemsEl = document.getElementById('seed-items');
-            seedItemsEl.innerHTML = `<div class="error">${error}</div>`;
-        }
+            updateCountdown();
 
-        function handleRefresh() {
-            if (loading) return;
-            
-            const refreshBtn = document.getElementById('refresh-btn');
-            refreshBtn.disabled = true;
-            refreshBtn.textContent = 'Refreshing...';
-            
-            loadStock(true).finally(() => {
-                refreshBtn.disabled = false;
-                refreshBtn.textContent = 'Refresh';
-            });
+        } catch (err) {
+            console.error(err);
+            document.getElementById('seed-items').innerHTML = '<div class="error">Failed to load stock.</div>';
+            document.getElementById('last-updated').textContent = 'Failed to load stock.';
         }
+    }
 
-        // Initialize the app
-        function init() {
-            loadStock();
-            
-            // Auto-refresh every 10 seconds
-            setInterval(() => {
-                loadStock(false);
-            }, 10000);
+    // Initial load
+    loadStock();
 
-            // Update countdown every second
-            setInterval(updateCountdown, 1000);
-        }
+    setInterval(() => loadStock(false), 10000);
+    setInterval(updateCountdown, 1000);
 
-        // Start the app when DOM is loaded
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', init);
-        } else {
-            init();
-        }
-    </script>
+    document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('last-updated').textContent = 'Loading...';
+    });
+</script>
 </body>
 </html>
